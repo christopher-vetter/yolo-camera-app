@@ -1,16 +1,12 @@
 {
-  "name": "yolo-camera-app",
+  "name": "yolo-node-app",
   "version": "1.0.0",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "postinstall": "pip install -r requirements.txt"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
-    "child_process": "^1.0.2",
     "express": "^5.1.0",
     "multer": "^2.0.2"
   }

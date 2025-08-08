@@ -1,22 +1,33 @@
-from ultralytics import YOLO
 import sys
-import json
+from ultralytics import YOLO
+import os
 
-# Expect first CLI argument as image path
+if len(sys.argv) < 2:
+    print("No image path provided")
+    sys.exit(1)
+
 image_path = sys.argv[1]
 
-# Load YOLO model (nano for speed)
+if not os.path.exists(image_path):
+    print(f"Image not found: {image_path}")
+    sys.exit(1)
+
+# Load YOLO model (YOLOv8n for speed; change to yolov8s or yolov11 if available)
 model = YOLO("yolov8n.pt")
 
-results = model.predict(source=image_path, imgsz=640, conf=0.25, verbose=False)
+# Run detection
+results = model(image_path)
 
-detections = []
-for r in results:
-    for box in r.boxes:
+# Print detection results
+for result in results:
+    boxes = result.boxes
+    names = result.names
+    detections = []
+    for box in boxes:
+        cls_id = int(box.cls[0])
+        conf = float(box.conf[0])
         detections.append({
-            "class": model.names[int(box.cls)],
-            "confidence": float(box.conf),
-            "box": box.xyxy[0].tolist()
+            "class": names[cls_id],
+            "confidence": round(conf, 2)
         })
-
-print(json.dumps(detections))  # Send to Node.js
+    print(detections)

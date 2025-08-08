@@ -5,39 +5,55 @@ const path = require("path");
 const fs = require("fs");
 
 const app = express();
-const upload = multer({ dest: "uploads/" });
+const PORT = process.env.PORT || 3000;
+
+// Ensure uploads folder exists
+const uploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir);
+}
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, "uploads/");
+    },
+    filename: function (req, file, cb) {
+        cb(null, Date.now() + path.extname(file.originalname));
+    }
+});
+const upload = multer({ storage: storage });
 
 app.post("/detect", upload.single("image"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No image uploaded" });
-  }
-
-  const imagePath = path.join(__dirname, req.file.path);
-
-  const pythonProcess = spawn("python3", ["detect.py", imagePath]);
-
-  let output = "";
-  pythonProcess.stdout.on("data", (data) => {
-    output += data.toString();
-  });
-
-  pythonProcess.stderr.on("data", (data) => {
-    console.error("Python error:", data.toString());
-  });
-
-  pythonProcess.on("close", () => {
-    fs.unlinkSync(imagePath); // clean up
-    try {
-      res.json(JSON.parse(output));
-    } catch (e) {
-      res.status(500).json({ error: "Error processing image" });
+    if (!req.file) {
+        return res.status(400).json({ error: "No image uploaded" });
     }
-  });
+
+    const imagePath = path.join(__dirname, req.file.path);
+
+    const pythonProcess = spawn("python3", ["detect.py", imagePath]);
+
+    let resultData = "";
+    pythonProcess.stdout.on("data", (data) => {
+        resultData += data.toString();
+    });
+
+    pythonProcess.stderr.on("data", (data) => {
+        console.error(`stderr: ${data}`);
+    });
+
+    pythonProcess.on("close", (code) => {
+        if (code === 0) {
+            res.json({ result: resultData.trim() });
+        } else {
+            res.status(500).json({ error: "Detection failed" });
+        }
+    });
 });
 
 app.get("/", (req, res) => {
-  res.json({ status: "YOLO API running" });
+    res.send("YOLO backend is running 🚀");
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
