@@ -1,13 +1,22 @@
-import torch
-import cv2
+from ultralytics import YOLO
+import sys
+import json
 
-# Load model once globally
-model = torch.hub.load('ultralytics/yolov5', 'yolov8.pt', pretrained=True)  # or yolov8
+# Expect first CLI argument as image path
+image_path = sys.argv[1]
 
-def run_detection(img):
-    results = model(img)
-    labels = results.pandas().xyxy[0]['name'].tolist()
+# Load YOLO model (nano for speed)
+model = YOLO("yolov8n.pt")
 
-    annotated_img = results.render()[0]
+results = model.predict(source=image_path, imgsz=640, conf=0.25, verbose=False)
 
-    return labels, annotated_img
+detections = []
+for r in results:
+    for box in r.boxes:
+        detections.append({
+            "class": model.names[int(box.cls)],
+            "confidence": float(box.conf),
+            "box": box.xyxy[0].tolist()
+        })
+
+print(json.dumps(detections))  # Send to Node.js
